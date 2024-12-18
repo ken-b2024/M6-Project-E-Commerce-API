@@ -2,8 +2,8 @@ from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from marshmallow import ValidationError
-from marshmallow import fields
-import mysql.connector
+from marshmallow import fields, validate
+
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:MySQL1sLif3!@localhost/e_test_db'
@@ -15,18 +15,6 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
 
-class AppMenu:
-    @staticmethod
-    def main_menu():
-        menu_items = ['1. Run API',
-                    '2. Place Order',
-                    '3. Retrieve Order',
-                    '4. Track Order',
-                    '5. Cancel Order',
-                    '6. Quit'
-    ]
-        print("\nWelcome to the E-Commerce Order Processing Menu!")
-        print("\nMain Menu:", *menu_items, sep='\n')
 
 class UserSchema(ma.Schema):
     name = fields.String(required=True)
@@ -61,7 +49,13 @@ product_schema = ProductSchema()
 products_schema = ProductSchema(many=True)
 
 class OrderSchema(ma.Schema):
-    pass    
+    date = fields.String(required=True)
+    user_id = fields.Integer(required=True)
+    total_price = fields.Float(required=True, validate=validate.Range(min=0))
+
+order_schema = OrderSchema()
+orders_schema = OrderSchema(many=True)
+
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -76,6 +70,8 @@ class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.String(255), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    total_price = db.Column(db.Float, nullable=False)
+    order_products = db.relationship('Order_Product', backref='orders', uselist=False)
 
 class CustomerAccount(db.Model):
     __tablename__ = 'customer_accounts'
@@ -97,6 +93,10 @@ class Product(db.Model):
     price = db.Column(db.Float, nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
     orders = db.relationship('Order', secondary=order_product, backref=db.backref('products'))
+    
+@app.route('/')
+def home():
+    return "Welcome to the E-Commerce API Database!"
 
 @app.route('/users', methods=['GET'])
 def read_users():
@@ -226,36 +226,21 @@ def view_and_manage_stock(id):
     db.session.commit()
     return jsonify({"message": "Product quantity details have beeen updated successfully"}), 200
 
-conn = connect.database
-
-def place_order():
-    order_query = 'SELECT * FROM orders'
-
+# @app.route('/orders', methods=['POST'])
+# def order_products():
+#     try:
+#         product_data = product_schema.load(request.json)
+#     except ValidationError as err:
+#         return jsonify(err.messages), 400
     
+#     new_product = Product(name=product_data['name'], price=product_data['price'], quantity=product_data['quantity'])
+#     db.session.add(new_product)
+#     db.session.commit()
+#     return jsonify({"message": "New product has been added successfully"}), 201
+
 with app.app_context():
     db.create_all()
 
 def app_run():
     if __name__ == '__main__':
         app.run(debug=True)
-
-while True:
-    if __name__ == '__main__':
-        AppMenu.main_menu()
-        try:
-            menu_selection = int(input("\nSelect Menu Item (1-4): "))
-            if menu_selection == 1:
-                app_run()
-            if menu_selection == 2:
-                pass
-            if menu_selection == 3:
-                pass
-            if menu_selection == 4:
-                pass
-            if menu_selection == 5:
-                pass
-            if menu_selection == 6:
-                print("\nThank you for using the E-Commerce Order Processing Menu!\n")
-                break
-        except ValueError:
-            print("\nThat is not a valid selection. Try again...")
