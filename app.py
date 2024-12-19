@@ -16,6 +16,8 @@ db = SQLAlchemy(app)
 ma = Marshmallow(app)
 
 
+
+
 class UserSchema(ma.Schema):
     name = fields.String(required=True)
     email = fields.String(required=True)
@@ -81,10 +83,10 @@ class CustomerAccount(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     user = db.relationship('User', backref='customer_accounts', uselist=False)
 
-order_product = db.Table('Order_Product',
+order_product = db.Table('order_product',
         db.Column('order_id', db.Integer, db.ForeignKey('orders.id'), primary_key=True),
         db.Column('product_id', db.Integer, db.ForeignKey('products.id'), primary_key=True)
-)
+    )
 
 class Product(db.Model):
     __tablename__ = 'products'
@@ -103,7 +105,7 @@ def read_users():
     users = User.query.all()
     return users_schema.jsonify(users)
 
-@app.route('/users', methods=['POST'])
+@app.route('/user', methods=['POST'])
 def create_users():
     try:
         user_data = user_schema.load(request.json)
@@ -226,21 +228,37 @@ def view_and_manage_stock(id):
     db.session.commit()
     return jsonify({"message": "Product quantity details have beeen updated successfully"}), 200
 
-# @app.route('/orders', methods=['POST'])
-# def order_products():
-#     try:
-#         product_data = product_schema.load(request.json)
-#     except ValidationError as err:
-#         return jsonify(err.messages), 400
-    
-#     new_product = Product(name=product_data['name'], price=product_data['price'], quantity=product_data['quantity'])
-#     db.session.add(new_product)
-#     db.session.commit()
-#     return jsonify({"message": "New product has been added successfully"}), 201
+@app.route('/orders', methods=['POST'])
+def order_products():
+    try:
+        order_data = order_schema.load(request.json)
+        products = Product.query.all()
+        total_price = 0
+        for item in products:
+            product = Product.query.get(item['product_id'])
+            total_price += product.price * item['quantity']
+    except ValidationError as err:
+        return jsonify(err.messages), 400
+
+    new_order = Order(date=order_data['date'], user_id=order_data['user_id'], total_price=total_price)
+    db.session.add(new_order)
+    db.session.commit()
+    return jsonify({"message": "New order has been created successfully"})
+
+@app.route('/orders/<int:id>', methods=['GET'])
+def retrieve_orders(id):
+    order = Order.query.get_or_404(id)
+    return order_schema.jsonify(order)
+
+@app.route('/orders/<int:id>', methods=['DELETE'])
+def cancel_order(id):
+    order = Order.query.get_or_404(id)
+    db.session.delete(order)
+    db.session.commit()
+    return jsonify({"message": "This order has been canceled successfully"}), 200
 
 with app.app_context():
     db.create_all()
 
-def app_run():
-    if __name__ == '__main__':
+if __name__ == '__main__':
         app.run(debug=True)
