@@ -16,8 +16,6 @@ db = SQLAlchemy(app)
 ma = Marshmallow(app)
 
 
-
-
 class UserSchema(ma.Schema):
     name = fields.String(required=True)
     email = fields.String(required=True)
@@ -151,12 +149,12 @@ def create_user_accounts():
     db.session.commit()
     return jsonify({"message": "New user account added successfully"}), 201
 
-@app.route('/users', methods=['GET'])
+@app.route('/accounts', methods=['GET'])
 def read_user_accounts():
     user_accounts = CustomerAccount.query.all()
     return accounts_schema.jsonify(user_accounts)
 
-@app.route('/users/<int:user_id>', methods=['PUT'])
+@app.route('/accounts/<int:user_id>', methods=['PUT'])
 def update_user_accounts(user_id):
     user_account = CustomerAccount.query.get_or_404(user_id)
     try:
@@ -170,7 +168,7 @@ def update_user_accounts(user_id):
     db.session.commit()
     return jsonify({"message": "Customer's account details updated successfully"}), 200
 
-@app.route('/users/<int:user_id>', methods=['DELETE'])
+@app.route('/accounts/<int:user_id>', methods=['DELETE'])
 def delete_user_accounts(user_id):
     user_account = CustomerAccount.query.get_or_404(user_id)
     db.session.delete(user_account)
@@ -216,7 +214,7 @@ def delete_products(id):
     db.session.commit()
     return jsonify({"message": "User account has been deleted successfully"}), 200
 
-@app.route('/products/<int:id>', methods=['GET'])
+@app.route('/stock/<int:id>', methods=['GET'])
 def view_and_manage_stock(id):
     product = Product.query.get_or_404(id)
     try:
@@ -256,6 +254,7 @@ def cancel_order(id):
     db.session.delete(order)
     db.session.commit()
     return jsonify({"message": "This order has been canceled successfully"}), 200
+    
 
 with app.app_context():
     db.create_all()
