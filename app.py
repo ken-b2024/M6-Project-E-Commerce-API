@@ -3,10 +3,11 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from marshmallow import ValidationError
 from marshmallow import fields, validate
+from flask_cors import CORS
 
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:MySQL1sLif3!@localhost/e_test_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:MySQL1sLif3!@localhost/e_commerce_db'
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
         'connect_args': 
         {'use_pure': True
@@ -14,7 +15,7 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 }
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
-
+CORS(app)
 
 class UserSchema(ma.Schema):
     name = fields.String(required=True)
@@ -65,13 +66,6 @@ class User(db.Model):
     phone = db.Column(db.String(15))
     orders = db.relationship('Order', backref='user')
 
-class Order(db.Model):
-    __tablename__ = 'orders'
-    id = db.Column(db.Integer, primary_key=True)
-    date = db.Column(db.String(255), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    total_price = db.Column(db.Float, nullable=False)
-    order_products = db.relationship('Order_Product', backref='orders', uselist=False)
 
 class CustomerAccount(db.Model):
     __tablename__ = 'customer_accounts'
@@ -85,6 +79,14 @@ order_product = db.Table('order_product',
         db.Column('order_id', db.Integer, db.ForeignKey('orders.id'), primary_key=True),
         db.Column('product_id', db.Integer, db.ForeignKey('products.id'), primary_key=True)
     )
+
+class Order(db.Model):
+    __tablename__ = 'orders'
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.String(255), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    total_price = db.Column(db.Float, nullable=False)
+    order_products = db.relationship('order_product', backref='orders', uselist=False)
 
 class Product(db.Model):
     __tablename__ = 'products'
@@ -103,7 +105,7 @@ def read_users():
     users = User.query.all()
     return users_schema.jsonify(users)
 
-@app.route('/user', methods=['POST'])
+@app.route('/users', methods=['POST'])
 def create_users():
     try:
         user_data = user_schema.load(request.json)
