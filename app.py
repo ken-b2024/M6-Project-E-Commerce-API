@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from marshmallow import ValidationError
 from marshmallow import fields, validate
+from sqlalchemy.orm import relationship
 from flask_cors import CORS
 
 
@@ -86,7 +87,7 @@ class Order(db.Model):
     date = db.Column(db.String(255), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     total_price = db.Column(db.Float, nullable=False)
-    order_products = db.relationship('order_product', backref='orders', uselist=False)
+    order_products = relationship('Product', secondary=order_product, back_populates='orders')
 
 class Product(db.Model):
     __tablename__ = 'products'
@@ -189,6 +190,11 @@ def create_products():
     db.session.commit()
     return jsonify({"message": "New product has been added successfully"}), 201
 
+@app.route('/products', methods=['GET'])
+def show_products():
+    products = Product.query.all()
+    return products_schema.jsonify(products)
+
 @app.route('/products/<int:id>', methods=['GET'])
 def read_product(id):
     product_info = Product.query.get_or_404(id)
@@ -244,6 +250,11 @@ def order_products():
     db.session.add(new_order)
     db.session.commit()
     return jsonify({"message": "New order has been created successfully"})
+
+@app.route('/orders', methods=['GET'])
+def read_orders():
+    orders = Order.query.all()
+    return orders_schema.jsonify(orders)
 
 @app.route('/orders/<int:id>', methods=['GET'])
 def retrieve_orders(id):
